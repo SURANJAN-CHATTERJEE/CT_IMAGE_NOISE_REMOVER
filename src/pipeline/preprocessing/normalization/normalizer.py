@@ -183,7 +183,7 @@ class CTNormalizer:
         metadata["NormalizationMethod"] = method_key
         metadata["NormalizationParameters"] = norm_params
         metadata["NormalizationTimestamp"] = datetime.now().isoformat()
-        metadata["LayerVersion"] = self.VERSION
+        metadata["LayerVersion"] = self.LayerVersion
         metadata["ProcessingTime"] = processing_time
         
         frozen_metadata = MappingProxyType(metadata)
@@ -215,7 +215,7 @@ class CTNormalizer:
             VolumeDtype=vol_dtype,
             EstimatedMemoryMB=est_mem_mb,
             ProcessingTime=processing_time,
-            LayerVersion=self.VERSION
+            LayerVersion=self.LayerVersion
         )
 
     def _validate_input_volume(self, windowed_volume: Any) -> None:

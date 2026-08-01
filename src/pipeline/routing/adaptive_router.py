@@ -192,7 +192,7 @@ class AdaptiveRouter:
         metadata["FallbackThreshold"] = fallback_threshold
         metadata["RoutingTimestamp"] = datetime.now().isoformat()
         metadata["RoutingStrategy"] = strategy
-        metadata["LayerVersion"] = self.VERSION
+        metadata["LayerVersion"] = self.LayerVersion
         metadata["ProcessingTime"] = processing_time
         
         frozen_metadata = MappingProxyType(metadata)
@@ -221,7 +221,7 @@ class AdaptiveRouter:
             FallbackMode=fallback_mode,
             Metadata=frozen_metadata,
             ProcessingTime=processing_time,
-            LayerVersion=self.VERSION
+            LayerVersion=self.LayerVersion
         )
 
     def _validate_input(self, report: Any) -> None:

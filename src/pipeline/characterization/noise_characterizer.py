@@ -130,7 +130,7 @@ class CTNoiseCharacterizer:
         processing_time = time.time() - start_time
         
         metadata["CharacterizationTimestamp"] = datetime.now().isoformat()
-        metadata["LayerVersion"] = self.VERSION
+        metadata["LayerVersion"] = self.LayerVersion
         metadata["ProcessingTime"] = processing_time
         
         frozen_metadata = MappingProxyType(metadata)
@@ -165,7 +165,7 @@ class CTNoiseCharacterizer:
             Statistics=frozen_statistics,
             Metadata=frozen_metadata,
             ProcessingTime=processing_time,
-            LayerVersion=self.VERSION
+            LayerVersion=self.LayerVersion
         )
 
     def _validate_input_volume(self, noisy_volume: Any) -> None:

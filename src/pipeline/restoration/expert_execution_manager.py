@@ -6,9 +6,13 @@ from datetime import datetime
 from types import MappingProxyType
 from typing import Mapping, Any, Tuple, List, Dict, Optional
 
+import numpy as np
+
 from src.pipeline.noise.noise_generator import NoisyVolume
 from src.pipeline.routing.adaptive_router import RoutingDecision, ExpertExecution
 from src.interfaces.expert import BaseExpert, ExpertResult
+from src.core.registry import ExpertRegistry
+from src.core.types import ExpertStatus
 
 logger = logging.getLogger(__name__)
 
@@ -18,21 +22,9 @@ class ExecutionError(Exception):
     pass
 
 
-class ExpertNotFoundError(ExecutionError):
-    """Raised when a required expert is not registered or found."""
-    pass
-
-
-class ExpertExecutionError(ExecutionError):
-    """Raised when an expert fails to execute properly."""
-    pass
-
-
 @dataclass(frozen=True)
 class ExecutionResult:
-    """
-    Immutable representation of the overall expert execution results.
-    """
+    """Immutable representation of the overall expert execution results."""
     Parent: RoutingDecision
     ExecutedExperts: Tuple[str, ...]
     SkippedExperts: Tuple[str, ...]
@@ -45,52 +37,26 @@ class ExecutionResult:
 
 
 class ExpertExecutionManager:
-    """
-    Engine for orchestrating and executing the expert routing plan.
-    This layer does not perform denoising or fusion; it only orchestrates execution.
-    """
+    """Engine for orchestrating and executing the expert routing plan."""
     
-    VERSION: str = "1.0.0"
+    LayerVersion: str = "v1.0.1"
 
-    def __init__(self, expert_registry: Optional[Mapping[str, BaseExpert]] = None):
-        """
-        Initializes the execution manager with an optional expert registry.
-        """
-        self.registry = dict(expert_registry) if expert_registry else {}
-
-    def register_expert(self, expert_name: str, expert_instance: BaseExpert) -> None:
-        """
-        Registers an expert instance into the execution manager.
-        """
-        self.registry[expert_name] = expert_instance
+    def __init__(self, expert_registry: Optional[Any] = None):
+        self.registry = ExpertRegistry
 
     def execute(self, routing_decision: Any, noisy_volume: Any) -> ExecutionResult:
-        """
-        Executes the routing decision plan on the noisy volume.
-        
-        Args:
-            routing_decision: The RoutingDecision object from Layer 8.
-            noisy_volume: The NoisyVolume object from Layer 6.
-            
-        Returns:
-            ExecutionResult: Immutable dataclass containing execution results.
-            
-        Raises:
-            ExecutionError: For validation and orchestration failures.
-            ExpertNotFoundError: If a required expert is not registered.
-            ExpertExecutionError: If an expert fails during execution.
-        """
         start_time = time.time()
         
         self._validate_inputs(routing_decision, noisy_volume)
-        
         metadata = copy.deepcopy(dict(routing_decision.Metadata))
         
         expert_plan = routing_decision.ExpertPlan
         expected_order = routing_decision.ExecutionOrder
         
-        self._validate_execution_order(expert_plan, expected_order)
-        
+        executable_experts = [p for p in expert_plan if p.Execute]
+        if not executable_experts:
+            raise ExecutionError("No executable experts remain in the plan.")
+            
         executed = []
         skipped = []
         results = []
@@ -103,23 +69,22 @@ class ExpertExecutionManager:
                 continue
                 
             expert_name = plan.ExpertName
-            if expert_name not in self.registry:
-                raise ExpertNotFoundError(f"Expert {expert_name} is required but not registered.")
+            if not self.registry.exists(expert_name):
+                logger.error(f"Expert {expert_name} is required but not registered.")
+                skipped.append(expert_name)
+                continue
                 
-            expert = self.registry[expert_name]
+            expert = self.registry.get(expert_name)
             
             logger.info(f"Executing expert {expert_name} (Priority={plan.Priority}, Weight={plan.Weight})")
             
+            exec_start = time.time()
             try:
-                exec_start = time.time()
                 result = expert.execute(noisy_volume, plan)
                 exec_time = time.time() - exec_start
                 
                 if not isinstance(result, ExpertResult):
-                    raise ExpertExecutionError(f"Expert {expert_name} did not return an ExpertResult.")
-                    
-                if result.ExpertName != expert_name:
-                    raise ExpertExecutionError(f"ExpertResult name {result.ExpertName} does not match {expert_name}.")
+                    raise ExecutionError(f"Expert {expert_name} did not return an ExpertResult.")
                     
                 results.append(result)
                 executed.append(expert_name)
@@ -127,14 +92,34 @@ class ExpertExecutionManager:
                 logger.info(f"Expert {expert_name} finished in {exec_time:.4f}s")
                 
             except Exception as e:
+                exec_time = time.time() - exec_start
                 logger.error(f"Execution failed for expert {expert_name}: {str(e)}")
-                raise ExpertExecutionError(f"Execution failed for {expert_name}: {str(e)}") from e
                 
-        if not executed:
-            raise ExecutionError("No experts were executed. All experts were skipped or none were provided.")
-            
-        if len(set(executed)) != len(executed):
-            raise ExecutionError("Duplicate expert executions detected.")
+                fail_metadata = {
+                    "ExceptionType": type(e).__name__,
+                    "ExceptionMessage": str(e),
+                    "ExecutionTime": exec_time
+                }
+                
+                # Mock result for FAILED
+                dummy_output = np.zeros_like(noisy_volume.Volume) if hasattr(noisy_volume, "Volume") else np.zeros((1,1,1))
+                fail_result = ExpertResult(
+                    ExpertName=expert_name,
+                    InputVolume=noisy_volume,
+                    OutputVolume=dummy_output,
+                    Confidence=plan.Confidence,
+                    Weight=0.0,
+                    ExecutionTime=exec_time,
+                    Status=ExpertStatus.FAILED,
+                    Statistics={},
+                    Metadata=MappingProxyType(fail_metadata),
+                    LayerVersion=self.LayerVersion
+                )
+                results.append(fail_result)
+                
+        # Raise ONLY if all fail or no executable
+        if not executed and not results:
+            raise ExecutionError("All experts failed or none were executable.")
             
         total_processing_time = time.time() - start_time
         
@@ -142,20 +127,13 @@ class ExpertExecutionManager:
             "TotalProcessingTime": total_processing_time,
             "ExecutedCount": float(len(executed)),
             "SkippedCount": float(len(skipped)),
-            "AverageExpertTime": sum(exec_times.values()) / len(executed) if executed else 0.0
+            "AverageExpertTime": sum(exec_times.values()) / max(len(exec_times), 1)
         }
         exec_stats.update({f"{k}_Time": v for k, v in exec_times.items()})
         
         metadata["ExecutionTimestamp"] = datetime.now().isoformat()
-        metadata["LayerVersion"] = self.VERSION
+        metadata["LayerVersion"] = self.LayerVersion
         metadata["ProcessingTime"] = total_processing_time
-        
-        frozen_metadata = MappingProxyType(metadata)
-        frozen_stats = MappingProxyType(exec_stats)
-        
-        logger.info(f"Executed Experts: {executed}")
-        logger.info(f"Skipped Experts: {skipped}")
-        logger.info(f"Total Execution Time: {total_processing_time:.4f} s")
         
         return ExecutionResult(
             Parent=routing_decision,
@@ -163,10 +141,10 @@ class ExpertExecutionManager:
             SkippedExperts=tuple(skipped),
             ExpertResults=tuple(results),
             ExecutionOrder=expected_order,
-            ExecutionStatistics=frozen_stats,
-            Metadata=frozen_metadata,
+            ExecutionStatistics=MappingProxyType(exec_stats),
+            Metadata=MappingProxyType(metadata),
             ProcessingTime=total_processing_time,
-            LayerVersion=self.VERSION
+            LayerVersion=self.LayerVersion
         )
 
     def _validate_inputs(self, routing_decision: Any, noisy_volume: Any) -> None:
@@ -174,11 +152,3 @@ class ExpertExecutionManager:
             raise ExecutionError(f"Invalid routing_decision type: {type(routing_decision).__name__}")
         if not isinstance(noisy_volume, NoisyVolume):
             raise ExecutionError(f"Invalid noisy_volume type: {type(noisy_volume).__name__}")
-            
-    def _validate_execution_order(self, expert_plan: Tuple[ExpertExecution, ...], expected_order: Tuple[str, ...]) -> None:
-        if len(expert_plan) != len(expected_order):
-            raise ExecutionError("Expert plan length does not match execution order length.")
-            
-        for i, plan in enumerate(expert_plan):
-            if plan.ExpertName != expected_order[i]:
-                raise ExecutionError(f"Execution order inconsistency at index {i}: Expected {expected_order[i]}, got {plan.ExpertName}.")

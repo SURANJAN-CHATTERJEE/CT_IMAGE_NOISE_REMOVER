@@ -71,7 +71,7 @@ class EvaluationEngine(BaseEvaluator):
         processing_time = time.time() - start_time
         
         metadata["EvaluationTimestamp"] = datetime.now().isoformat()
-        metadata["LayerVersion"] = self.VERSION
+        metadata["LayerVersion"] = self.LayerVersion
         metadata["ProcessingTime"] = processing_time
         
         frozen_image_metrics = MappingProxyType(image_metrics)
@@ -93,7 +93,7 @@ class EvaluationEngine(BaseEvaluator):
             Summary=frozen_summary,
             Metadata=frozen_metadata,
             ProcessingTime=processing_time,
-            LayerVersion=self.VERSION
+            LayerVersion=self.LayerVersion
         )
 
     def _validate_inputs(self, fusion_result: Any, ground_truth: Optional[np.ndarray] = None) -> None:

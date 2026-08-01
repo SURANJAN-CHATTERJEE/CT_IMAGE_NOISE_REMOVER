@@ -1,0 +1,20 @@
+{
+    "PassedModules": [
+        "Configuration Loading",
+        "Registry",
+        "Hardware Monitor",
+        "Random Manager",
+        "DICOM/HU Pipeline",
+        "Synthetic Noise Generation",
+        "Adaptive Routing",
+        "Expert Execution",
+        "Fusion",
+        "Explainability",
+        "Evaluation",
+        "Export",
+        "Experiment Logging"
+    ],
+    "FailedModules": [],
+    "Errors": [],
+    "Time": 6.695721387863159
+}

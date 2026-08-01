@@ -75,7 +75,7 @@ class ExplainabilityEngine(BaseExplainer):
         processing_time = time.time() - start_time
         
         metadata["ExplainabilityTimestamp"] = datetime.now().isoformat()
-        metadata["LayerVersion"] = self.VERSION
+        metadata["LayerVersion"] = self.LayerVersion
         metadata["ProcessingTime"] = processing_time
         
         # Extended Metadata
@@ -105,7 +105,7 @@ class ExplainabilityEngine(BaseExplainer):
             ContributionMaps=frozen_contribution,
             Metadata=frozen_metadata,
             ProcessingTime=processing_time,
-            LayerVersion=self.VERSION
+            LayerVersion=self.LayerVersion
         )
 
     def _explain_routing(self, fusion_result: FusionResult) -> Dict[str, Any]:

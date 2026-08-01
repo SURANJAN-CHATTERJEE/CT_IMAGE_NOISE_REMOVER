@@ -5,6 +5,16 @@ from typing import Any, Mapping, Optional
 import numpy as np
 
 from src.pipeline.restoration.expert_execution_manager import ExecutionResult
+@dataclass(frozen=True)
+class FusionContext:
+    TrainingMode: bool
+    GroundTruth: Optional[np.ndarray]
+    DatasetName: str
+    ExperimentID: str
+    Epoch: int
+    Checkpoint: str
+    EvaluationMode: bool
+
 
 
 @dataclass(frozen=True)
@@ -31,7 +41,7 @@ class BaseFusionStrategy(ABC):
     @abstractmethod
     def fuse(
         self, 
-        execution_result: ExecutionResult,
+        execution_result: ExecutionResult, context: Optional[FusionContext] = None,
         ground_truth: Optional[np.ndarray] = None
     ) -> FusionResult:
         """

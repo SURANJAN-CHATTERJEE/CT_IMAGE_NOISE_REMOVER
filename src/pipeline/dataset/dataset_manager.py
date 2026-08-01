@@ -277,7 +277,7 @@ class CTDatasetIndexer:
             DuplicateSeries=tuple(invalid_series),
             DuplicateStudies=tuple(invalid_studies),
             ProcessingTime=processing_time,
-            LayerVersion=self.VERSION
+            LayerVersion=self.LayerVersion
         )
 
     def _read_dicom_header(self, filepath: Path) -> dict:

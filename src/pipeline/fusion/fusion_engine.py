@@ -41,7 +41,7 @@ class WeightedAverageFusion(BaseFusionStrategy):
     """
     Fuses expert outputs using their raw routing weights.
     """
-    VERSION = "1.0.1"
+    LayerVersion = "v1.0.1"
 
     def fuse(self, execution_result: Any, ground_truth: Optional[np.ndarray] = None) -> FusionResult:
         start_time = time.time()
@@ -66,7 +66,7 @@ class WeightedAverageFusion(BaseFusionStrategy):
         
         metadata["FusionTimestamp"] = datetime.now().isoformat()
         metadata["FusionStrategy"] = strategy_name
-        metadata["LayerVersion"] = self.VERSION
+        metadata["LayerVersion"] = self.LayerVersion
         metadata["ProcessingTime"] = processing_time
         
         metadata["ExpertsUsed"] = tuple(normalized_weights.keys())
@@ -93,7 +93,7 @@ class WeightedAverageFusion(BaseFusionStrategy):
             QualityMetrics=frozen_metrics,
             Metadata=frozen_metadata,
             ProcessingTime=processing_time,
-            LayerVersion=self.VERSION
+            LayerVersion=self.LayerVersion
         )
 
     def _validate_inputs(self, execution_result: Any, ground_truth: Optional[np.ndarray] = None) -> None:
@@ -212,7 +212,7 @@ class ConfidenceFusion(WeightedAverageFusion):
         
         metadata["FusionTimestamp"] = datetime.now().isoformat()
         metadata["FusionStrategy"] = strategy_name
-        metadata["LayerVersion"] = self.VERSION
+        metadata["LayerVersion"] = self.LayerVersion
         metadata["ProcessingTime"] = processing_time
         
         executed_experts = execution_result.ExecutedExperts
@@ -241,7 +241,7 @@ class ConfidenceFusion(WeightedAverageFusion):
             QualityMetrics=frozen_metrics,
             Metadata=frozen_metadata,
             ProcessingTime=processing_time,
-            LayerVersion=self.VERSION
+            LayerVersion=self.LayerVersion
         )
 
 
@@ -275,7 +275,7 @@ class ReliabilityFusion(WeightedAverageFusion):
         
         metadata["FusionTimestamp"] = datetime.now().isoformat()
         metadata["FusionStrategy"] = strategy_name
-        metadata["LayerVersion"] = self.VERSION
+        metadata["LayerVersion"] = self.LayerVersion
         metadata["ProcessingTime"] = processing_time
         
         executed_experts = execution_result.ExecutedExperts
@@ -304,7 +304,7 @@ class ReliabilityFusion(WeightedAverageFusion):
             QualityMetrics=frozen_metrics,
             Metadata=frozen_metadata,
             ProcessingTime=processing_time,
-            LayerVersion=self.VERSION
+            LayerVersion=self.LayerVersion
         )
 
 

@@ -154,7 +154,7 @@ class CTWindowing:
         metadata["WindowWidth"] = width
         metadata["WindowPreset"] = preset_name
         metadata["WindowRange"] = (lower_bound, upper_bound)
-        metadata["LayerVersion"] = self.VERSION
+        metadata["LayerVersion"] = self.LayerVersion
         metadata["ProcessingTime"] = processing_time
         
         frozen_metadata = MappingProxyType(metadata)
@@ -187,7 +187,7 @@ class CTWindowing:
             VolumeDtype=vol_dtype,
             EstimatedMemoryMB=est_mem_mb,
             ProcessingTime=processing_time,
-            LayerVersion=self.VERSION
+            LayerVersion=self.LayerVersion
         )
 
     def _validate_input_volume(self, hu_volume: Any) -> None:

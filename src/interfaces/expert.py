@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from src.core.types import ExpertStatus
 from typing import Any, Mapping
 
 import numpy as np
@@ -14,11 +15,12 @@ class ExpertResult:
     Immutable representation of an individual expert's denoising result.
     """
     ExpertName: str
-    InputVolume: np.ndarray
+    InputVolume: NoisyVolume
     OutputVolume: np.ndarray
     Confidence: float
     Weight: float
     ExecutionTime: float
+    Status: ExpertStatus
     Statistics: Mapping[str, float]
     Metadata: Mapping[str, Any]
     LayerVersion: str
